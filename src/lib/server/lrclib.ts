@@ -6,7 +6,8 @@ export interface LyricsResult {
 	instrumental: boolean;
 }
 
-interface LrclibRecord {
+export interface LrclibRecord {
+	id: number;
 	trackName: string;
 	artistName: string;
 	albumName: string | null;
@@ -14,6 +15,12 @@ interface LrclibRecord {
 	instrumental: boolean;
 	plainLyrics: string | null;
 	syncedLyrics: string | null;
+}
+
+export interface LrclibQuery {
+	trackName: string;
+	artistName: string;
+	albumName?: string;
 }
 
 /** LRCLIB's own tolerance on /get is tight; widen it for our /search fallback. */
@@ -36,7 +43,22 @@ export class LrclibClient {
 	async fetchLyrics(tags: TrackTags): Promise<LyricsResult | null> {
 		const exact = await this.get(tags);
 		if (exact) return toResult(exact);
-		return this.search(tags);
+		return this.autoPickFromSearch(tags);
+	}
+
+	/** Raw search results, for manual review — no duration filtering or ranking applied. */
+	async searchCandidates(query: LrclibQuery): Promise<LrclibRecord[]> {
+		const params = new URLSearchParams({
+			track_name: query.trackName,
+			artist_name: query.artistName
+		});
+		if (query.albumName) params.set('album_name', query.albumName);
+
+		const res = await fetch(`${this.baseUrl}/search?${params}`, {
+			headers: { 'User-Agent': this.userAgent }
+		});
+		if (!res.ok) throw new Error(`LRCLIB /search failed: ${res.status} ${res.statusText}`);
+		return (await res.json()) as LrclibRecord[];
 	}
 
 	private async get(tags: TrackTags): Promise<LrclibRecord | null> {
@@ -57,14 +79,12 @@ export class LrclibClient {
 		return (await res.json()) as LrclibRecord;
 	}
 
-	private async search(tags: TrackTags): Promise<LyricsResult | null> {
-		const params = new URLSearchParams({ track_name: tags.title, artist_name: tags.artist });
-		const res = await fetch(`${this.baseUrl}/search?${params}`, {
-			headers: { 'User-Agent': this.userAgent }
+	private async autoPickFromSearch(tags: TrackTags): Promise<LyricsResult | null> {
+		const records = await this.searchCandidates({
+			trackName: tags.title,
+			artistName: tags.artist,
+			albumName: tags.album ?? undefined
 		});
-		if (!res.ok) throw new Error(`LRCLIB /search failed: ${res.status} ${res.statusText}`);
-
-		const records = (await res.json()) as LrclibRecord[];
 		if (records.length === 0) return null;
 
 		const candidates =

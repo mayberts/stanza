@@ -1,0 +1,342 @@
+<script lang="ts">
+	import MatchDrawer from '$lib/components/MatchDrawer.svelte';
+	import {
+		ALL_STATUSES,
+		STATUS_LABELS,
+		formatDuration,
+		trackFileName,
+		type TrackRow,
+		type TrackStatus
+	} from '$lib/types.js';
+	import { SvelteURLSearchParams } from 'svelte/reactivity';
+	import type { PageProps } from './$types.js';
+
+	let { data }: PageProps = $props();
+
+	const LIMIT = 50;
+
+	let tracks = $state<TrackRow[]>(data.tracks);
+	let total = $state(data.total);
+	let counts = $state(data.counts);
+	let scanning = $state(data.scanning);
+	let musicDir = data.musicDir;
+
+	let statusFilter = $state<TrackStatus | null>(null);
+	let searchInput = $state('');
+	let searchQuery = $state('');
+	let offset = $state(0);
+	let selectedTrack = $state<TrackRow | null>(null);
+
+	let searchDebounce: ReturnType<typeof setTimeout>;
+	function onSearchInput() {
+		clearTimeout(searchDebounce);
+		searchDebounce = setTimeout(() => {
+			searchQuery = searchInput;
+			offset = 0;
+		}, 300);
+	}
+
+	function selectStatus(status: TrackStatus | null) {
+		statusFilter = status;
+		offset = 0;
+	}
+
+	async function refreshStats() {
+		const res = await fetch('/api/stats');
+		const data = await res.json();
+		counts = data.counts;
+		scanning = data.scanning;
+	}
+
+	async function refreshTracks(status: TrackStatus | null, q: string, off: number) {
+		const params = new SvelteURLSearchParams();
+		if (status) params.set('status', status);
+		if (q) params.set('q', q);
+		params.set('limit', String(LIMIT));
+		params.set('offset', String(off));
+		const res = await fetch(`/api/tracks?${params}`);
+		const data = await res.json();
+		tracks = data.rows;
+		total = data.total;
+	}
+
+	async function rescan() {
+		scanning = true;
+		await fetch('/api/scan', { method: 'POST' });
+	}
+
+	$effect(() => {
+		refreshTracks(statusFilter, searchQuery, offset);
+	});
+
+	$effect(() => {
+		const interval = setInterval(() => {
+			refreshStats();
+			refreshTracks(statusFilter, searchQuery, offset);
+		}, 4000);
+		return () => clearInterval(interval);
+	});
+
+	function onApplied() {
+		refreshStats();
+		refreshTracks(statusFilter, searchQuery, offset);
+	}
+
+	const totalTracks = $derived(Object.values(counts).reduce((a, b) => a + b, 0));
+</script>
+
+<svelte:head>
+	<title>Stanza</title>
+</svelte:head>
+
+<div class="page">
+	<header>
+		<div>
+			<h1>Stanza</h1>
+			<p class="muted">{musicDir}</p>
+		</div>
+		<div class="header-actions">
+			{#if scanning}
+				<span class="scanning">
+					<span class="dot"></span> Scanning…
+				</span>
+			{/if}
+			<button onclick={rescan} disabled={scanning}>Rescan now</button>
+		</div>
+	</header>
+
+	<div class="stats">
+		<button class="pill" class:active={statusFilter === null} onclick={() => selectStatus(null)}>
+			All <span class="count">{totalTracks}</span>
+		</button>
+		{#each ALL_STATUSES as status (status)}
+			<button
+				class="pill status-{status}"
+				class:active={statusFilter === status}
+				onclick={() => selectStatus(status)}
+			>
+				{STATUS_LABELS[status]} <span class="count">{counts[status] ?? 0}</span>
+			</button>
+		{/each}
+	</div>
+
+	<div class="toolbar">
+		<input
+			class="search"
+			placeholder="Search artist, title, album, or path…"
+			bind:value={searchInput}
+			oninput={onSearchInput}
+		/>
+	</div>
+
+	<table>
+		<thead>
+			<tr>
+				<th>Artist</th>
+				<th>Title</th>
+				<th>Album</th>
+				<th>Duration</th>
+				<th>Status</th>
+				<th></th>
+			</tr>
+		</thead>
+		<tbody>
+			{#each tracks as track (track.path)}
+				<tr>
+					<td>{track.artist ?? '—'}</td>
+					<td>
+						{track.title ?? trackFileName(track.path)}
+						<div class="file-path">{trackFileName(track.path)}</div>
+					</td>
+					<td>{track.album ?? '—'}</td>
+					<td>{formatDuration(track.durationSec)}</td>
+					<td
+						><span class="status-badge status-{track.status}">{STATUS_LABELS[track.status]}</span
+						></td
+					>
+					<td class="actions">
+						<button class="link-btn" onclick={() => (selectedTrack = track)}>Fix match</button>
+					</td>
+				</tr>
+			{:else}
+				<tr>
+					<td colspan="6" class="muted empty">No tracks match this filter yet.</td>
+				</tr>
+			{/each}
+		</tbody>
+	</table>
+
+	<div class="pagination">
+		<span class="muted">
+			{total === 0 ? 0 : offset + 1}–{Math.min(offset + LIMIT, total)} of {total}
+		</span>
+		<div>
+			<button disabled={offset === 0} onclick={() => (offset = Math.max(0, offset - LIMIT))}>
+				Prev
+			</button>
+			<button disabled={offset + LIMIT >= total} onclick={() => (offset = offset + LIMIT)}>
+				Next
+			</button>
+		</div>
+	</div>
+</div>
+
+{#if selectedTrack}
+	<MatchDrawer track={selectedTrack} onClose={() => (selectedTrack = null)} {onApplied} />
+{/if}
+
+<style>
+	.page {
+		max-width: 1100px;
+		margin: 0 auto;
+		padding: 2rem 1.5rem 4rem;
+	}
+	header {
+		display: flex;
+		justify-content: space-between;
+		align-items: flex-start;
+		margin-bottom: 1.5rem;
+	}
+	h1 {
+		margin: 0;
+		font-size: 1.4rem;
+	}
+	.muted {
+		color: var(--muted);
+	}
+	.header-actions {
+		display: flex;
+		align-items: center;
+		gap: 0.9rem;
+	}
+	.header-actions button {
+		background: var(--accent);
+		color: var(--accent-text);
+		border: none;
+		border-radius: 6px;
+		padding: 0.5rem 0.9rem;
+		font-weight: 600;
+	}
+	.header-actions button:disabled {
+		opacity: 0.6;
+	}
+	.scanning {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4em;
+		color: var(--status-plain);
+		font-size: 0.85rem;
+	}
+	.dot {
+		width: 0.5em;
+		height: 0.5em;
+		border-radius: 50%;
+		background: currentColor;
+		animation: pulse 1.2s ease-in-out infinite;
+	}
+	@keyframes pulse {
+		0%,
+		100% {
+			opacity: 1;
+		}
+		50% {
+			opacity: 0.3;
+		}
+	}
+	.stats {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+		margin-bottom: 1.25rem;
+	}
+	.pill {
+		background: var(--surface);
+		border: 1px solid var(--border);
+		color: var(--text);
+		border-radius: 999px;
+		padding: 0.35rem 0.8rem;
+		font-size: 0.8rem;
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+	}
+	.pill.active {
+		border-color: var(--accent);
+	}
+	.pill .count {
+		color: var(--muted);
+	}
+	.toolbar {
+		margin-bottom: 1rem;
+	}
+	.search {
+		width: 100%;
+		background: var(--surface);
+		border: 1px solid var(--border);
+		border-radius: 8px;
+		padding: 0.6rem 0.9rem;
+		color: var(--text);
+	}
+	table {
+		width: 100%;
+		border-collapse: collapse;
+		background: var(--surface);
+		border: 1px solid var(--border);
+		border-radius: 10px;
+		overflow: hidden;
+	}
+	th,
+	td {
+		text-align: left;
+		padding: 0.65rem 0.9rem;
+		border-bottom: 1px solid var(--border);
+		font-size: 0.85rem;
+		vertical-align: top;
+	}
+	th {
+		color: var(--muted);
+		font-weight: 600;
+		font-size: 0.75rem;
+		text-transform: uppercase;
+		letter-spacing: 0.03em;
+	}
+	tbody tr:last-child td {
+		border-bottom: none;
+	}
+	.file-path {
+		color: var(--muted);
+		font-size: 0.72rem;
+		margin-top: 0.15rem;
+		word-break: break-all;
+	}
+	.empty {
+		text-align: center;
+		padding: 2rem;
+	}
+	.link-btn {
+		background: none;
+		border: 1px solid var(--border);
+		color: var(--text);
+		border-radius: 6px;
+		padding: 0.35rem 0.6rem;
+		font-size: 0.78rem;
+	}
+	.pagination {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-top: 1rem;
+		font-size: 0.85rem;
+	}
+	.pagination button {
+		background: var(--surface);
+		border: 1px solid var(--border);
+		color: var(--text);
+		border-radius: 6px;
+		padding: 0.4rem 0.8rem;
+		margin-left: 0.5rem;
+	}
+	.pagination button:disabled {
+		opacity: 0.5;
+	}
+</style>

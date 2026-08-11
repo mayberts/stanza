@@ -2,7 +2,7 @@ import chokidar from 'chokidar';
 import { extname } from 'node:path';
 import { AUDIO_EXTENSIONS } from './tags.js';
 import { processTrack, removeTrack, type PipelineDeps } from './pipeline.js';
-import { runFullScan } from './scan.js';
+import { triggerScan } from './scan-runner.js';
 
 function isAudioPath(path: string): boolean {
 	return AUDIO_EXTENSIONS.has(extname(path).toLowerCase());
@@ -41,7 +41,7 @@ export function startWatching(deps: PipelineDeps): () => Promise<void> {
 	const intervalMs = config.scanIntervalMinutes * 60 * 1000;
 	const timer = setInterval(() => {
 		logger.debug('Running periodic full rescan');
-		runFullScan(deps).catch((err) => logger.error(`Periodic rescan failed: ${err}`));
+		triggerScan(deps);
 	}, intervalMs);
 
 	return async () => {

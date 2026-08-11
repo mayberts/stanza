@@ -1,13 +1,16 @@
 #!/usr/bin/env node
+// Headless CLI, mainly for local/dev use without the web dashboard (`npm run
+// cli -- scan|watch`). The production Docker image runs the SvelteKit app
+// instead (`node build`), which does the same watching plus serves the UI.
 import { Command } from 'commander';
-import { loadConfig } from './config.js';
-import { StanzaDb } from './db.js';
-import { Logger } from './logger.js';
-import { LrclibClient } from './lrclib.js';
-import type { PipelineDeps } from './pipeline.js';
-import { RateLimiter } from './rate-limiter.js';
-import { runFullScan } from './scan.js';
-import { startWatching } from './watcher.js';
+import { loadConfig } from './lib/server/config.js';
+import { StanzaDb } from './lib/server/db.js';
+import { Logger } from './lib/server/logger.js';
+import { LrclibClient } from './lib/server/lrclib.js';
+import type { PipelineDeps } from './lib/server/pipeline.js';
+import { RateLimiter } from './lib/server/rate-limiter.js';
+import { runFullScan } from './lib/server/scan.js';
+import { startWatching } from './lib/server/watcher.js';
 
 function buildDeps(dirOverride?: string): PipelineDeps {
 	const config = loadConfig(dirOverride ? { musicDir: dirOverride } : {});
@@ -22,7 +25,7 @@ const program = new Command();
 program
 	.name('stanza')
 	.description('Scans a music library and fetches the matching .lrc lyrics file for each track.')
-	.version('0.1.0');
+	.version('0.2.0');
 
 program
 	.command('scan')

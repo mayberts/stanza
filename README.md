@@ -2,7 +2,9 @@
 
 Scans a music library and fetches the matching `.lrc` lyrics file for each
 track — synced (timestamped) lyrics when available, plain text as a
-fallback — from [LRCLIB](https://lrclib.net).
+fallback — from [LRCLIB](https://lrclib.net). Ships as a small SvelteKit app:
+one process watches your library in the background and serves a dashboard
+where you can see match status and fix the ones it got wrong.
 
 Tracks are matched by their own embedded tags (artist, title, album,
 duration) — no external library database required. Matched lyrics are
@@ -24,19 +26,49 @@ LRCLIB had no match for are retried automatically after
 `.lrc` files that already exist and weren't written by Stanza itself are
 left alone by default.
 
+## Dashboard
+
+The web app (running by default, see below) serves a dashboard at `/`:
+
+- Live counts per match status (synced / plain / not found / existing lyrics
+  left alone / no tags / error), click one to filter the track list.
+- Search by artist, title, album, or file path.
+- **Rescan now** to trigger a full scan on demand.
+- **Fix match** on any track opens a panel to search LRCLIB yourself (with
+  the artist/title/album prefilled, editable) and pick the right result —
+  for tracks Stanza got wrong or couldn't find automatically.
+
 ## Usage
 
 ```sh
 npm install
 cp .env.example .env   # set MUSIC_DIR at minimum
-npm run build
-
-npm start scan    # one-off scan, exits when done
-npm start watch    # scan once, then watch for changes and keep running
+npm run dev             # dashboard + watcher, http://localhost:5173
 ```
 
-During development, `npm run dev -- scan` / `npm run dev -- watch` runs
-straight from TypeScript via `tsx`.
+For production:
+
+```sh
+npm run build
+node build               # dashboard + watcher, http://localhost:3000 (set PORT to change)
+```
+
+The watcher starts automatically the moment the server boots (see
+`src/hooks.server.ts`) — there's no separate "start watching" step.
+
+### Headless CLI (no dashboard)
+
+For local/dev one-off scans without the web server:
+
+```sh
+npm run cli -- scan --dir /path/to/music    # scan once and exit
+npm run cli -- watch --dir /path/to/music   # watch, no dashboard
+```
+
+This isn't included in the Docker image — in Docker, trigger a one-off scan
+by hitting the dashboard's "Rescan now" button, or `curl -X POST
+http://<host>:<port>/api/scan` from a script/cron if you want one without
+opening the UI.
 
 ## Configuration
 
@@ -58,7 +90,9 @@ docker compose up -d --build
 
 Mount your actual music library over `/music` (read-write, so `.lrc` files
 can be written) and a `/config` volume for the state DB to persist across
-container recreation. See `docker-compose.yml`.
+container recreation. The dashboard is served on port 3000 inside the
+container — see `docker-compose.yml` for the host port mapping and volume
+paths.
 
 ## Attribution
 

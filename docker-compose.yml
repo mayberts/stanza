@@ -5,6 +5,8 @@ services:
     image: ghcr.io/mayberts/stanza:latest
     container_name: stanza
     restart: unless-stopped
+    ports:
+      - '4123:3000'
     environment:
       - MUSIC_DIR=/music
       - DB_PATH=/config/stanza.db

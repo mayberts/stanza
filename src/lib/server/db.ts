@@ -2,8 +2,15 @@ import Database from 'better-sqlite3';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 
-export type TrackStatus =
-	'synced' | 'plain' | 'not_found' | 'skipped_existing' | 'no_tags' | 'error';
+export const ALL_STATUSES = [
+	'synced',
+	'plain',
+	'not_found',
+	'skipped_existing',
+	'no_tags',
+	'error'
+] as const;
+export type TrackStatus = (typeof ALL_STATUSES)[number];
 
 export interface TrackRow {
 	path: string;
@@ -116,11 +123,49 @@ export class StanzaDb {
 		return rows.map((r) => r.path);
 	}
 
-	notFoundDueForRetry(cutoffMs: number): string[] {
+	list(options: { status?: string; q?: string; limit: number; offset: number }): {
+		rows: TrackRow[];
+		total: number;
+	} {
+		const clauses: string[] = [];
+		const params: Record<string, unknown> = {};
+
+		if (options.status) {
+			clauses.push('status = @status');
+			params.status = options.status;
+		}
+		if (options.q) {
+			clauses.push('(path LIKE @q OR artist LIKE @q OR title LIKE @q OR album LIKE @q)');
+			params.q = `%${options.q}%`;
+		}
+		const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
+
+		const total = (
+			this.db.prepare(`SELECT COUNT(*) AS c FROM tracks ${where}`).get(params) as { c: number }
+		).c;
+
 		const rows = this.db
-			.prepare("SELECT path FROM tracks WHERE status = 'not_found' AND checked_at < ?")
-			.all(cutoffMs) as { path: string }[];
-		return rows.map((r) => r.path);
+			.prepare(
+				`SELECT * FROM tracks ${where} ORDER BY artist, album, path LIMIT @limit OFFSET @offset`
+			)
+			.all({ ...params, limit: options.limit, offset: options.offset }) as TrackTableRow[];
+
+		return { rows: rows.map(fromRow), total };
+	}
+
+	statsCounts(): Record<TrackStatus, number> {
+		const counts = Object.fromEntries(ALL_STATUSES.map((s) => [s, 0])) as Record<
+			TrackStatus,
+			number
+		>;
+		const rows = this.db
+			.prepare('SELECT status, COUNT(*) AS c FROM tracks GROUP BY status')
+			.all() as {
+			status: TrackStatus;
+			c: number;
+		}[];
+		for (const row of rows) counts[row.status] = row.c;
+		return counts;
 	}
 
 	close(): void {

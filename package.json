@@ -1,37 +1,45 @@
 {
 	"name": "stanza",
 	"private": true,
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"type": "module",
-	"description": "Scans a music library and fetches the matching .lrc lyrics file (synced, or plain as a fallback) for each track, from LRCLIB.",
-	"bin": {
-		"stanza": "./dist/index.js"
-	},
+	"description": "Scans a music library, fetches the matching .lrc lyrics file (synced, or plain as a fallback) for each track from LRCLIB, and serves a dashboard to review matches and fix the ones it got wrong.",
 	"scripts": {
-		"build": "tsc -p tsconfig.json",
-		"dev": "tsx src/index.ts",
-		"start": "node dist/index.js",
-		"check": "tsc --noEmit",
+		"dev": "vite dev",
+		"build": "vite build",
+		"preview": "vite preview",
+		"prepare": "svelte-kit sync || echo ''",
+		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"lint": "prettier --check . && eslint .",
-		"format": "prettier --write ."
+		"format": "prettier --write .",
+		"cli": "tsx src/cli.ts"
 	},
 	"dependencies": {
+		"@sveltejs/adapter-node": "^5.5.4",
+		"@sveltejs/kit": "^2.63.0",
 		"better-sqlite3": "^13.0.2",
 		"chokidar": "^4.0.3",
 		"commander": "^14.0.1",
 		"dotenv": "^17.2.3",
-		"music-metadata": "^11.9.0"
+		"music-metadata": "^11.9.0",
+		"svelte": "^5.56.1"
 	},
 	"devDependencies": {
 		"@eslint/js": "^10.0.1",
+		"@sveltejs/vite-plugin-svelte": "^7.1.2",
 		"@types/better-sqlite3": "^7.6.13",
 		"@types/node": "^22",
 		"eslint": "^10.4.1",
 		"eslint-config-prettier": "^10.1.8",
+		"eslint-plugin-svelte": "^3.19.0",
 		"globals": "^17.6.0",
 		"prettier": "^3.8.3",
+		"prettier-plugin-svelte": "^4.1.0",
+		"svelte-check": "^4.6.0",
 		"tsx": "^4.20.6",
 		"typescript": "^6.0.3",
-		"typescript-eslint": "^8.60.1"
+		"typescript-eslint": "^8.60.1",
+		"vite": "^8.0.16"
 	}
 }

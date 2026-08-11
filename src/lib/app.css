@@ -1,0 +1,90 @@
+:root {
+	--bg: #0f1115;
+	--surface: #171a21;
+	--surface-raised: #1e222b;
+	--border: #262b35;
+	--text: #e6e8eb;
+	--muted: #8b92a1;
+	--accent: #f5b942;
+	--accent-text: #1a1406;
+
+	--status-synced: #34d399;
+	--status-plain: #fbbf24;
+	--status-not_found: #f87171;
+	--status-skipped_existing: #60a5fa;
+	--status-no_tags: #9ca3af;
+	--status-error: #ef4444;
+}
+
+* {
+	box-sizing: border-box;
+}
+
+body {
+	margin: 0;
+	background: var(--bg);
+	color: var(--text);
+	font-family:
+		system-ui,
+		-apple-system,
+		'Segoe UI',
+		sans-serif;
+	font-size: 14px;
+}
+
+button,
+input,
+select {
+	font: inherit;
+	color: inherit;
+}
+
+a {
+	color: var(--accent);
+}
+
+button {
+	cursor: pointer;
+}
+
+.status-badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35em;
+	padding: 0.15em 0.6em;
+	border-radius: 999px;
+	font-size: 0.8em;
+	font-weight: 600;
+	white-space: nowrap;
+}
+.status-badge::before {
+	content: '';
+	width: 0.5em;
+	height: 0.5em;
+	border-radius: 50%;
+	background: currentColor;
+}
+.status-synced {
+	color: var(--status-synced);
+	background: color-mix(in srgb, var(--status-synced) 15%, transparent);
+}
+.status-plain {
+	color: var(--status-plain);
+	background: color-mix(in srgb, var(--status-plain) 15%, transparent);
+}
+.status-not_found {
+	color: var(--status-not_found);
+	background: color-mix(in srgb, var(--status-not_found) 15%, transparent);
+}
+.status-skipped_existing {
+	color: var(--status-skipped_existing);
+	background: color-mix(in srgb, var(--status-skipped_existing) 15%, transparent);
+}
+.status-no_tags {
+	color: var(--status-no_tags);
+	background: color-mix(in srgb, var(--status-no_tags) 15%, transparent);
+}
+.status-error {
+	color: var(--status-error);
+	background: color-mix(in srgb, var(--status-error) 15%, transparent);
+}
