@@ -19,11 +19,14 @@ export interface PipelineDeps {
 export function needsProcessing(
 	existing: TrackRow | undefined,
 	mtimeMs: number,
-	retryCutoffMs: number
+	retryCutoffMs: number,
+	force = false
 ): boolean {
 	if (!existing) return true;
 	if (existing.mtimeMs !== mtimeMs) return true;
-	if (existing.status === 'not_found') return existing.checkedAt < retryCutoffMs;
+	if (existing.status === 'not_found' || existing.status === 'error') {
+		return force || existing.checkedAt < retryCutoffMs;
+	}
 	return false;
 }
 

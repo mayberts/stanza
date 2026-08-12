@@ -19,10 +19,13 @@ export function getLastScan(): {
 }
 
 /** Fire-and-forget: starts a scan if one isn't already running. Safe to call often. */
-export function triggerScan(deps: PipelineDeps): { started: boolean } {
+export function triggerScan(
+	deps: PipelineDeps,
+	options: { force?: boolean } = {}
+): { started: boolean } {
 	if (scanning) return { started: false };
 	scanning = true;
-	runFullScan(deps)
+	runFullScan(deps, options)
 		.then((result) => {
 			lastResult = result;
 			lastError = null;

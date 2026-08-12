@@ -8,9 +8,13 @@ export interface ScanResult {
 	removed: number;
 }
 
-export async function runFullScan(deps: PipelineDeps): Promise<ScanResult> {
+export async function runFullScan(
+	deps: PipelineDeps,
+	options: { force?: boolean } = {}
+): Promise<ScanResult> {
 	const { config, db, logger } = deps;
 	const retryCutoffMs = Date.now() - config.retryNotFoundAfterHours * 60 * 60 * 1000;
+	const force = options.force ?? false;
 
 	const seen = new Set<string>();
 	let scanned = 0;
@@ -28,7 +32,7 @@ export async function runFullScan(deps: PipelineDeps): Promise<ScanResult> {
 		}
 
 		const existing = db.get(filePath);
-		if (needsProcessing(existing, mtimeMs, retryCutoffMs)) {
+		if (needsProcessing(existing, mtimeMs, retryCutoffMs, force)) {
 			await processTrack(deps, filePath);
 			processed++;
 		}

@@ -31,10 +31,11 @@ program
 	.command('scan')
 	.description('Scan the music directory once and exit.')
 	.option('-d, --dir <path>', 'music directory (overrides MUSIC_DIR)')
-	.action(async (opts: { dir?: string }) => {
+	.option('-f, --force', 'ignore the not-found/error retry cooldown and recheck them now')
+	.action(async (opts: { dir?: string; force?: boolean }) => {
 		const deps = buildDeps(opts.dir);
 		deps.logger.info(`Scanning ${deps.config.musicDir}`);
-		await runFullScan(deps);
+		await runFullScan(deps, { force: opts.force });
 		deps.db.close();
 	});
 

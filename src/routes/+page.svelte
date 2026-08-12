@@ -98,7 +98,11 @@
 
 	async function rescan() {
 		scanning = true;
-		await fetch('/api/scan', { method: 'POST' });
+		await fetch('/api/scan', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ force: true })
+		});
 	}
 
 	$effect(() => {
