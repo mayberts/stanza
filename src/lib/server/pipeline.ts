@@ -33,6 +33,12 @@ export function needsProcessing(
 	if (existing.status === 'plain') {
 		return force || existing.checkedAt < upgradeCutoffMs;
 	}
+	// Never re-fetches lyrics (existing ones are always left alone), but a
+	// forced rescan re-reads tags — cheap, and backfills artist/title/album
+	// for tracks recorded before their metadata was read (or not read at all).
+	if (existing.status === 'skipped_existing' && force) {
+		return true;
+	}
 	return false;
 }
 
@@ -49,6 +55,7 @@ export async function processTrack(deps: PipelineDeps, filePath: string): Promis
 	}
 
 	const now = Date.now();
+	const tags = await readTrackTags(filePath);
 
 	if (lrcExists(filePath) && !config.overwriteExisting) {
 		const existing = db.get(filePath);
@@ -56,10 +63,10 @@ export async function processTrack(deps: PipelineDeps, filePath: string): Promis
 			db.upsert({
 				path: filePath,
 				mtimeMs,
-				artist: null,
-				title: null,
-				album: null,
-				durationSec: null,
+				artist: tags?.artist ?? null,
+				title: tags?.title ?? null,
+				album: tags?.album ?? null,
+				durationSec: tags?.durationSec ?? null,
 				status: 'skipped_existing',
 				wroteLrc: false,
 				checkedAt: now
@@ -69,7 +76,6 @@ export async function processTrack(deps: PipelineDeps, filePath: string): Promis
 		}
 	}
 
-	const tags = await readTrackTags(filePath);
 	if (!tags) {
 		db.upsert({
 			path: filePath,
