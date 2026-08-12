@@ -6,6 +6,7 @@ export interface Config {
 	dbPath: string;
 	scanIntervalMinutes: number;
 	retryNotFoundAfterHours: number;
+	upgradePlainAfterHours: number;
 	usePolling: boolean;
 	pollIntervalMs: number;
 	rateLimitMs: number;
@@ -46,6 +47,7 @@ export function loadConfig(overrides: Partial<Pick<Config, 'musicDir'>> = {}): C
 		dbPath: process.env.DB_PATH ?? './stanza.db',
 		scanIntervalMinutes: envInt('SCAN_INTERVAL_MINUTES', 60),
 		retryNotFoundAfterHours: envInt('RETRY_NOT_FOUND_AFTER_HOURS', 24),
+		upgradePlainAfterHours: envInt('UPGRADE_PLAIN_AFTER_HOURS', 168),
 		usePolling: envBool('USE_POLLING', false),
 		pollIntervalMs: envInt('POLL_INTERVAL_MS', 15_000),
 		rateLimitMs: envInt('RATE_LIMIT_MS', 1000),

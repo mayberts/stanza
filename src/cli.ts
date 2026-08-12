@@ -31,7 +31,7 @@ program
 	.command('scan')
 	.description('Scan the music directory once and exit.')
 	.option('-d, --dir <path>', 'music directory (overrides MUSIC_DIR)')
-	.option('-f, --force', 'ignore the not-found/error retry cooldown and recheck them now')
+	.option('-f, --force', 'ignore the not-found/error/plain retry cooldowns and recheck them now')
 	.action(async (opts: { dir?: string; force?: boolean }) => {
 		const deps = buildDeps(opts.dir);
 		deps.logger.info(`Scanning ${deps.config.musicDir}`);

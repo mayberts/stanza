@@ -20,12 +20,18 @@ export function needsProcessing(
 	existing: TrackRow | undefined,
 	mtimeMs: number,
 	retryCutoffMs: number,
+	upgradeCutoffMs: number,
 	force = false
 ): boolean {
 	if (!existing) return true;
 	if (existing.mtimeMs !== mtimeMs) return true;
 	if (existing.status === 'not_found' || existing.status === 'error') {
 		return force || existing.checkedAt < retryCutoffMs;
+	}
+	// Plain lyrics are a resolved-but-improvable state: LRCLIB may add synced
+	// timing for a track later without us ever seeing it as not_found.
+	if (existing.status === 'plain') {
+		return force || existing.checkedAt < upgradeCutoffMs;
 	}
 	return false;
 }

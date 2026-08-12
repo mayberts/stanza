@@ -23,8 +23,17 @@ A local SQLite DB tracks what's already been checked, so rescans are cheap:
 unchanged tracks with a resolved lyrics status aren't re-queried. Tracks
 LRCLIB had no match for are retried automatically after
 `RETRY_NOT_FOUND_AFTER_HOURS`, since LRCLIB's database grows over time.
-`.lrc` files that already exist and weren't written by Stanza itself are
-left alone by default.
+Tracks that only got plain (unsynced) lyrics are rechecked less often, after
+`UPGRADE_PLAIN_AFTER_HOURS`, in case LRCLIB adds synced timing for them
+later — synced always replaces plain, never the other way around. `.lrc`
+files that already exist and weren't written by Stanza itself are left
+alone by default.
+
+**Rescan now** (dashboard button, or `stanza scan --force`) skips both
+cooldowns and rechecks every not-found/error/plain track immediately,
+regardless of how recently it was last checked. The automatic background
+rescan does not — it always respects the cooldowns, so it won't hammer
+LRCLIB on every scan for tracks that genuinely aren't there yet.
 
 ## Dashboard
 

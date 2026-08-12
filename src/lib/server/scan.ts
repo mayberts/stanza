@@ -14,6 +14,7 @@ export async function runFullScan(
 ): Promise<ScanResult> {
 	const { config, db, logger } = deps;
 	const retryCutoffMs = Date.now() - config.retryNotFoundAfterHours * 60 * 60 * 1000;
+	const upgradeCutoffMs = Date.now() - config.upgradePlainAfterHours * 60 * 60 * 1000;
 	const force = options.force ?? false;
 
 	const seen = new Set<string>();
@@ -32,7 +33,7 @@ export async function runFullScan(
 		}
 
 		const existing = db.get(filePath);
-		if (needsProcessing(existing, mtimeMs, retryCutoffMs, force)) {
+		if (needsProcessing(existing, mtimeMs, retryCutoffMs, upgradeCutoffMs, force)) {
 			await processTrack(deps, filePath);
 			processed++;
 		}
