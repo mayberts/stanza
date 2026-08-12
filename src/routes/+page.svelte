@@ -129,7 +129,15 @@
 <div class="page">
 	<header>
 		<div>
-			<h1>Stanza</h1>
+			<div class="brand">
+				<svg class="mark" viewBox="0 0 64 64" aria-hidden="true">
+					<rect width="64" height="64" rx="14" fill="#0f1115" />
+					<rect x="14" y="16" width="36" height="7" rx="3.5" fill="#8b92a1" opacity="0.55" />
+					<rect x="9" y="29" width="46" height="9" rx="4.5" fill="#f5b942" />
+					<rect x="17" y="42" width="30" height="7" rx="3.5" fill="#8b92a1" opacity="0.55" />
+				</svg>
+				<h1>Stanza</h1>
+			</div>
 			<p class="muted">{musicDir}</p>
 		</div>
 		<div class="header-actions">
@@ -253,6 +261,17 @@
 		justify-content: space-between;
 		align-items: flex-start;
 		margin-bottom: 1.5rem;
+	}
+	.brand {
+		display: flex;
+		align-items: center;
+		gap: 0.6rem;
+	}
+	.mark {
+		width: 28px;
+		height: 28px;
+		border-radius: 8px;
+		flex-shrink: 0;
 	}
 	h1 {
 		margin: 0;
