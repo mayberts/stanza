@@ -123,7 +123,14 @@ export class StanzaDb {
 		return rows.map((r) => r.path);
 	}
 
-	list(options: { status?: string; q?: string; limit: number; offset: number }): {
+	list(options: {
+		status?: string;
+		artist?: string;
+		album?: string;
+		title?: string;
+		limit: number;
+		offset: number;
+	}): {
 		rows: TrackRow[];
 		total: number;
 	} {
@@ -134,9 +141,17 @@ export class StanzaDb {
 			clauses.push('status = @status');
 			params.status = options.status;
 		}
-		if (options.q) {
-			clauses.push('(path LIKE @q OR artist LIKE @q OR title LIKE @q OR album LIKE @q)');
-			params.q = `%${options.q}%`;
+		if (options.artist) {
+			clauses.push('artist = @artist');
+			params.artist = options.artist;
+		}
+		if (options.album) {
+			clauses.push('album = @album');
+			params.album = options.album;
+		}
+		if (options.title) {
+			clauses.push('(title LIKE @title OR path LIKE @title)');
+			params.title = `%${options.title}%`;
 		}
 		const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
 
@@ -151,6 +166,30 @@ export class StanzaDb {
 			.all({ ...params, limit: options.limit, offset: options.offset }) as TrackTableRow[];
 
 		return { rows: rows.map(fromRow), total };
+	}
+
+	distinctArtists(): string[] {
+		const rows = this.db
+			.prepare(
+				"SELECT DISTINCT artist FROM tracks WHERE artist IS NOT NULL AND artist != '' ORDER BY artist COLLATE NOCASE"
+			)
+			.all() as { artist: string }[];
+		return rows.map((r) => r.artist);
+	}
+
+	distinctAlbums(artist?: string): string[] {
+		const rows = artist
+			? (this.db
+					.prepare(
+						"SELECT DISTINCT album FROM tracks WHERE album IS NOT NULL AND album != '' AND artist = ? ORDER BY album COLLATE NOCASE"
+					)
+					.all(artist) as { album: string }[])
+			: (this.db
+					.prepare(
+						"SELECT DISTINCT album FROM tracks WHERE album IS NOT NULL AND album != '' ORDER BY album COLLATE NOCASE"
+					)
+					.all() as { album: string }[]);
+		return rows.map((r) => r.album);
 	}
 
 	statsCounts(): Record<TrackStatus, number> {

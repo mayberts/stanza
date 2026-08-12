@@ -20,24 +20,47 @@
 	let counts = $state(data.counts);
 	let scanning = $state(data.scanning);
 	let musicDir = data.musicDir;
+	let artists = $state<string[]>(data.artists);
+	let albums = $state<string[]>(data.albums);
 
 	let statusFilter = $state<TrackStatus | null>(null);
-	let searchInput = $state('');
-	let searchQuery = $state('');
+	let artistFilter = $state<string | null>(null);
+	let albumFilter = $state<string | null>(null);
+	let titleInput = $state('');
+	let titleQuery = $state('');
 	let offset = $state(0);
 	let selectedTrack = $state<TrackRow | null>(null);
 
-	let searchDebounce: ReturnType<typeof setTimeout>;
-	function onSearchInput() {
-		clearTimeout(searchDebounce);
-		searchDebounce = setTimeout(() => {
-			searchQuery = searchInput;
+	let titleDebounce: ReturnType<typeof setTimeout>;
+	function onTitleInput() {
+		clearTimeout(titleDebounce);
+		titleDebounce = setTimeout(() => {
+			titleQuery = titleInput;
 			offset = 0;
 		}, 300);
 	}
 
 	function selectStatus(status: TrackStatus | null) {
 		statusFilter = status;
+		offset = 0;
+	}
+
+	async function refreshAlbums(artist: string | null) {
+		const params = new SvelteURLSearchParams();
+		if (artist) params.set('artist', artist);
+		const res = await fetch(`/api/albums?${params}`);
+		albums = (await res.json()).albums;
+	}
+
+	function onArtistChange(value: string) {
+		artistFilter = value || null;
+		albumFilter = null;
+		offset = 0;
+		refreshAlbums(artistFilter);
+	}
+
+	function onAlbumChange(value: string) {
+		albumFilter = value || null;
 		offset = 0;
 	}
 
@@ -48,10 +71,18 @@
 		scanning = data.scanning;
 	}
 
-	async function refreshTracks(status: TrackStatus | null, q: string, off: number) {
+	async function refreshTracks(
+		status: TrackStatus | null,
+		artist: string | null,
+		album: string | null,
+		title: string,
+		off: number
+	) {
 		const params = new SvelteURLSearchParams();
 		if (status) params.set('status', status);
-		if (q) params.set('q', q);
+		if (artist) params.set('artist', artist);
+		if (album) params.set('album', album);
+		if (title) params.set('title', title);
 		params.set('limit', String(LIMIT));
 		params.set('offset', String(off));
 		const res = await fetch(`/api/tracks?${params}`);
@@ -60,26 +91,32 @@
 		total = data.total;
 	}
 
+	async function refreshFacets() {
+		const res = await fetch('/api/artists');
+		artists = (await res.json()).artists;
+	}
+
 	async function rescan() {
 		scanning = true;
 		await fetch('/api/scan', { method: 'POST' });
 	}
 
 	$effect(() => {
-		refreshTracks(statusFilter, searchQuery, offset);
+		refreshTracks(statusFilter, artistFilter, albumFilter, titleQuery, offset);
 	});
 
 	$effect(() => {
 		const interval = setInterval(() => {
 			refreshStats();
-			refreshTracks(statusFilter, searchQuery, offset);
+			refreshTracks(statusFilter, artistFilter, albumFilter, titleQuery, offset);
+			refreshFacets();
 		}, 4000);
 		return () => clearInterval(interval);
 	});
 
 	function onApplied() {
 		refreshStats();
-		refreshTracks(statusFilter, searchQuery, offset);
+		refreshTracks(statusFilter, artistFilter, albumFilter, titleQuery, offset);
 	}
 
 	const totalTracks = $derived(Object.values(counts).reduce((a, b) => a + b, 0));
@@ -121,11 +158,31 @@
 	</div>
 
 	<div class="toolbar">
+		<select
+			class="filter-select"
+			value={artistFilter ?? ''}
+			onchange={(e) => onArtistChange(e.currentTarget.value)}
+		>
+			<option value="">All artists</option>
+			{#each artists as artist (artist)}
+				<option value={artist}>{artist}</option>
+			{/each}
+		</select>
+		<select
+			class="filter-select"
+			value={albumFilter ?? ''}
+			onchange={(e) => onAlbumChange(e.currentTarget.value)}
+		>
+			<option value="">All albums</option>
+			{#each albums as album (album)}
+				<option value={album}>{album}</option>
+			{/each}
+		</select>
 		<input
 			class="search"
-			placeholder="Search artist, title, album, or path…"
-			bind:value={searchInput}
-			oninput={onSearchInput}
+			placeholder="Search track title…"
+			bind:value={titleInput}
+			oninput={onTitleInput}
 		/>
 	</div>
 
@@ -267,15 +324,25 @@
 		color: var(--muted);
 	}
 	.toolbar {
+		display: flex;
+		gap: 0.6rem;
 		margin-bottom: 1rem;
 	}
-	.search {
-		width: 100%;
+	.search,
+	.filter-select {
 		background: var(--surface);
 		border: 1px solid var(--border);
 		border-radius: 8px;
 		padding: 0.6rem 0.9rem;
 		color: var(--text);
+	}
+	.search {
+		flex: 1 1 auto;
+		min-width: 0;
+	}
+	.filter-select {
+		flex: 0 1 220px;
+		min-width: 0;
 	}
 	table {
 		width: 100%;

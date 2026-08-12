@@ -10,6 +10,8 @@ export const load: PageServerLoad = () => {
 		counts: deps.db.statsCounts(),
 		scanning: isScanning(),
 		tracks: rows,
-		total
+		total,
+		artists: deps.db.distinctArtists(),
+		albums: deps.db.distinctAlbums()
 	};
 };
