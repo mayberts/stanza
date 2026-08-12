@@ -48,12 +48,25 @@ export class LrclibClient {
 
 	/** Raw search results, for manual review — no duration filtering or ranking applied. */
 	async searchCandidates(query: LrclibQuery): Promise<LrclibRecord[]> {
-		const params = new URLSearchParams({
+		const structuredParams = new URLSearchParams({
 			track_name: query.trackName,
 			artist_name: query.artistName
 		});
-		if (query.albumName) params.set('album_name', query.albumName);
+		if (query.albumName) structuredParams.set('album_name', query.albumName);
+		const structured = await this.rawSearch(structuredParams);
+		if (structured.length > 0) return structured;
 
+		// Structured search requires each field to land close to LRCLIB's own
+		// trackName/artistName/albumName — real-world tags ("feat.", remix suffixes,
+		// "Artist A/Artist B" vs "Artist A & Artist B") often miss it even when LRCLIB
+		// has the track. Fall back to the same free-text query lrclib.net's own search
+		// box uses, which fuzzy-matches across title/artist/album together.
+		const q = [query.artistName, query.trackName].filter(Boolean).join(' ').trim();
+		if (!q) return [];
+		return this.rawSearch(new URLSearchParams({ q }));
+	}
+
+	private async rawSearch(params: URLSearchParams): Promise<LrclibRecord[]> {
 		const res = await fetch(`${this.baseUrl}/search?${params}`, {
 			headers: { 'User-Agent': this.userAgent }
 		});
