@@ -32,6 +32,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		durationSec: tags?.durationSec ?? null,
 		status: body.syncedLyrics ? 'synced' : 'plain',
 		wroteLrc: true,
+		manualOverride: true,
 		checkedAt: Date.now()
 	});
 

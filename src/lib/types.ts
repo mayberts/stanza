@@ -10,6 +10,7 @@ export interface TrackRow {
 	durationSec: number | null;
 	status: TrackStatus;
 	wroteLrc: boolean;
+	manualOverride: boolean;
 	checkedAt: number;
 }
 

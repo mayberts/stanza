@@ -21,6 +21,9 @@ export interface TrackRow {
 	durationSec: number | null;
 	status: TrackStatus;
 	wroteLrc: boolean;
+	/** Set when a human picked this match via "Fix match" — protects it from ever
+	 * being silently replaced by automatic matching (rescans, upgrade checks). */
+	manualOverride: boolean;
 	checkedAt: number;
 }
 
@@ -33,6 +36,7 @@ interface TrackTableRow {
 	duration_sec: number | null;
 	status: TrackStatus;
 	wrote_lrc: number;
+	manual_override: number;
 	checked_at: number;
 }
 
@@ -77,6 +81,7 @@ function fromRow(row: TrackTableRow): TrackRow {
 		durationSec: row.duration_sec,
 		status: row.status,
 		wroteLrc: row.wrote_lrc === 1,
+		manualOverride: row.manual_override === 1,
 		checkedAt: row.checked_at
 	};
 }
@@ -106,6 +111,13 @@ export class StanzaDb {
 			);
 			CREATE INDEX IF NOT EXISTS tracks_status_idx ON tracks (status);
 		`);
+
+		// CREATE TABLE IF NOT EXISTS doesn't add columns to an already-existing
+		// table, so new columns need an explicit, idempotent ALTER TABLE here.
+		const columns = this.db.prepare('PRAGMA table_info(tracks)').all() as { name: string }[];
+		if (!columns.some((c) => c.name === 'manual_override')) {
+			this.db.exec('ALTER TABLE tracks ADD COLUMN manual_override INTEGER NOT NULL DEFAULT 0');
+		}
 	}
 
 	get(path: string): TrackRow | undefined {
@@ -117,8 +129,8 @@ export class StanzaDb {
 	upsert(row: TrackRow): void {
 		this.db
 			.prepare(
-				`INSERT INTO tracks (path, mtime_ms, artist, title, album, duration_sec, status, wrote_lrc, checked_at)
-				 VALUES (@path, @mtimeMs, @artist, @title, @album, @durationSec, @status, @wroteLrc, @checkedAt)
+				`INSERT INTO tracks (path, mtime_ms, artist, title, album, duration_sec, status, wrote_lrc, manual_override, checked_at)
+				 VALUES (@path, @mtimeMs, @artist, @title, @album, @durationSec, @status, @wroteLrc, @manualOverride, @checkedAt)
 				 ON CONFLICT(path) DO UPDATE SET
 					mtime_ms = excluded.mtime_ms,
 					artist = excluded.artist,
@@ -127,6 +139,7 @@ export class StanzaDb {
 					duration_sec = excluded.duration_sec,
 					status = excluded.status,
 					wrote_lrc = excluded.wrote_lrc,
+					manual_override = excluded.manual_override,
 					checked_at = excluded.checked_at`
 			)
 			.run({
@@ -138,6 +151,7 @@ export class StanzaDb {
 				durationSec: row.durationSec,
 				status: row.status,
 				wroteLrc: row.wroteLrc ? 1 : 0,
+				manualOverride: row.manualOverride ? 1 : 0,
 				checkedAt: row.checkedAt
 			});
 	}

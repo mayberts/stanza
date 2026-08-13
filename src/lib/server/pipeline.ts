@@ -24,6 +24,7 @@ export function needsProcessing(
 	force = false
 ): boolean {
 	if (!existing) return true;
+	if (existing.manualOverride) return false;
 	if (existing.mtimeMs !== mtimeMs) return true;
 	if (existing.status === 'not_found' || existing.status === 'error') {
 		return force || existing.checkedAt < retryCutoffMs;
@@ -55,10 +56,18 @@ export async function processTrack(deps: PipelineDeps, filePath: string): Promis
 	}
 
 	const now = Date.now();
+
+	// A human picked this match via "Fix match" — never let automatic matching
+	// (a rescan, an upgrade check, a bulk filtered rescan) silently replace it.
+	const existing = db.get(filePath);
+	if (existing?.manualOverride) {
+		logger.debug(`Skipping (manually matched): ${filePath}`);
+		return;
+	}
+
 	const tags = await readTrackTags(filePath);
 
 	if (lrcExists(filePath) && !config.overwriteExisting) {
-		const existing = db.get(filePath);
 		if (!existing?.wroteLrc) {
 			db.upsert({
 				path: filePath,
@@ -69,6 +78,7 @@ export async function processTrack(deps: PipelineDeps, filePath: string): Promis
 				durationSec: tags?.durationSec ?? null,
 				status: 'skipped_existing',
 				wroteLrc: false,
+				manualOverride: false,
 				checkedAt: now
 			});
 			logger.debug(`Skipping (lyrics already exist): ${filePath}`);
@@ -86,6 +96,7 @@ export async function processTrack(deps: PipelineDeps, filePath: string): Promis
 			durationSec: null,
 			status: 'no_tags',
 			wroteLrc: false,
+			manualOverride: false,
 			checkedAt: now
 		});
 		logger.warn(`No usable artist/title tags, skipping: ${filePath}`);
@@ -107,6 +118,7 @@ export async function processTrack(deps: PipelineDeps, filePath: string): Promis
 			durationSec: tags.durationSec,
 			status: 'error',
 			wroteLrc: false,
+			manualOverride: false,
 			checkedAt: now
 		});
 		logger.error(`LRCLIB lookup failed for "${tags.artist} - ${tags.title}": ${String(err)}`);
@@ -124,6 +136,7 @@ export async function processTrack(deps: PipelineDeps, filePath: string): Promis
 			durationSec: tags.durationSec,
 			status: 'not_found',
 			wroteLrc: false,
+			manualOverride: false,
 			checkedAt: now
 		});
 		logger.info(`No lyrics found: ${tags.artist} - ${tags.title}`);
@@ -141,6 +154,7 @@ export async function processTrack(deps: PipelineDeps, filePath: string): Promis
 		durationSec: tags.durationSec,
 		status,
 		wroteLrc: true,
+		manualOverride: false,
 		checkedAt: now
 	});
 	logger.info(`Wrote ${status} lyrics: ${tags.artist} - ${tags.title}`);

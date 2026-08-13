@@ -250,8 +250,12 @@
 					<td>{track.album ?? '—'}</td>
 					<td>{formatDuration(track.durationSec)}</td>
 					<td
-						><span class="status-badge status-{track.status}">{STATUS_LABELS[track.status]}</span
-						></td
+						><span class="status-badge status-{track.status}">{STATUS_LABELS[track.status]}</span>
+						{#if track.manualOverride}
+							<span class="manual-badge" title="Manually matched — protected from automatic rescans"
+								>manual</span
+							>
+						{/if}</td
 					>
 					<td class="actions">
 						<button class="link-btn" onclick={() => (selectedTrack = track)}>Fix match</button>
@@ -442,6 +446,16 @@
 		font-size: 0.72rem;
 		margin-top: 0.15rem;
 		word-break: break-all;
+	}
+	.manual-badge {
+		display: inline-block;
+		margin-left: 0.4rem;
+		font-size: 0.68rem;
+		color: var(--muted);
+		border: 1px solid var(--border);
+		border-radius: 999px;
+		padding: 0.05rem 0.5rem;
+		vertical-align: middle;
 	}
 	.empty {
 		text-align: center;
