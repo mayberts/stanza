@@ -23,8 +23,13 @@ export interface LrclibQuery {
 	albumName?: string;
 }
 
-/** LRCLIB's own tolerance on /get is tight; widen it for our /search fallback. */
-const SEARCH_DURATION_TOLERANCE_SEC = 3;
+/** LRCLIB's own tolerance on /get is tight; widen it further for our /search
+ * fallback. Community-submitted durations for the same song commonly vary by
+ * several seconds across different rips/remasters/album pressings — a tight
+ * window here means real synced matches silently get discarded in favor of
+ * keeping a worse plain-only match, even though a human glancing at the same
+ * search results would immediately recognize them as the same song. */
+const SEARCH_DURATION_TOLERANCE_SEC = 10;
 
 /** "Artist A feat./featuring/ft./with Artist B" — LRCLIB usually only credits the
  * primary artist, so a query carrying the full billing (guest artists and all)
