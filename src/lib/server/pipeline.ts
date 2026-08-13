@@ -15,6 +15,14 @@ export interface PipelineDeps {
 	rateLimiter: RateLimiter;
 }
 
+/** Rounded to whole milliseconds: some filesystems (FUSE mounts like Unraid's
+ * shfs, network shares) report mtime with sub-millisecond jitter between
+ * separate stat() calls on a file that never actually changed — comparing the
+ * raw float would make every track look "changed" on every single scan. */
+export async function getMtimeMs(filePath: string): Promise<number> {
+	return Math.round((await stat(filePath)).mtimeMs);
+}
+
 /** Whether a track is worth re-checking, given its last-known DB state. */
 export function needsProcessing(
 	existing: TrackRow | undefined,
@@ -48,7 +56,7 @@ export async function processTrack(deps: PipelineDeps, filePath: string): Promis
 
 	let mtimeMs: number;
 	try {
-		mtimeMs = (await stat(filePath)).mtimeMs;
+		mtimeMs = await getMtimeMs(filePath);
 	} catch {
 		// File vanished between being listed and being processed (e.g. a watcher
 		// race during a rename) — nothing to do.

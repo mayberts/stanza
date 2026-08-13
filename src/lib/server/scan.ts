@@ -1,6 +1,11 @@
-import { stat } from 'node:fs/promises';
 import type { TrackFilter } from './db.js';
-import { needsProcessing, processTrack, removeTrack, type PipelineDeps } from './pipeline.js';
+import {
+	getMtimeMs,
+	needsProcessing,
+	processTrack,
+	removeTrack,
+	type PipelineDeps
+} from './pipeline.js';
 import { walkAudioFiles } from './scanner.js';
 
 export interface ScanResult {
@@ -28,7 +33,7 @@ export async function runFullScan(
 
 		let mtimeMs: number;
 		try {
-			mtimeMs = (await stat(filePath)).mtimeMs;
+			mtimeMs = await getMtimeMs(filePath);
 		} catch {
 			continue;
 		}
