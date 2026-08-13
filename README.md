@@ -43,6 +43,12 @@ The web app (running by default, see below) serves a dashboard at `/`:
   left alone / no tags / error), click one to filter the track list.
 - Search by artist, title, album, or file path.
 - **Rescan now** to trigger a full scan on demand.
+- **Rescan filtered** rechecks only the tracks currently matching your filter,
+  instead of the whole library. If that filter is specifically the "Existing
+  lyrics" status, this is the one case where Stanza _will_ overwrite lyrics it
+  didn't write — filtering to exactly that bucket and asking for a rescan only
+  makes sense as "try to actually fix these" (confirmed before it runs). Any
+  other filter combination still leaves those files alone.
 - **Fix match** on any track opens a panel to search LRCLIB yourself (with
   the artist/title/album prefilled, editable) and pick the right result —
   for tracks Stanza got wrong or couldn't find automatically.

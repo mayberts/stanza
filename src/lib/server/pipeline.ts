@@ -58,7 +58,11 @@ export function needsProcessing(
 	return false;
 }
 
-export async function processTrack(deps: PipelineDeps, filePath: string): Promise<void> {
+export async function processTrack(
+	deps: PipelineDeps,
+	filePath: string,
+	options: { allowOverwrite?: boolean } = {}
+): Promise<void> {
 	const { config, db, lrclib, logger, rateLimiter } = deps;
 
 	let mtimeMs: number;
@@ -82,7 +86,7 @@ export async function processTrack(deps: PipelineDeps, filePath: string): Promis
 
 	const tags = await readTrackTags(filePath);
 
-	if (lrcExists(filePath) && !config.overwriteExisting) {
+	if (lrcExists(filePath) && !config.overwriteExisting && !options.allowOverwrite) {
 		if (!existing?.wroteLrc) {
 			db.upsert({
 				path: filePath,

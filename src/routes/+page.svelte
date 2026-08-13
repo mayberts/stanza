@@ -110,6 +110,12 @@
 	);
 
 	async function rescanFiltered() {
+		if (statusFilter === 'skipped_existing') {
+			const confirmed = confirm(
+				`This will overwrite the existing lyrics on all ${total} track${total === 1 ? '' : 's'} shown with whatever LRCLIB matches — not just refresh their info. This can't be undone. Continue?`
+			);
+			if (!confirmed) return;
+		}
 		scanning = true;
 		await fetch('/api/scan', {
 			method: 'POST',
@@ -220,9 +226,11 @@
 			class="rescan-filtered"
 			onclick={rescanFiltered}
 			disabled={scanning || !hasActiveFilter}
-			title={hasActiveFilter
-				? `Recheck just the ${total} track${total === 1 ? '' : 's'} matching this filter`
-				: 'Pick a status, artist, album, or title filter first'}
+			title={!hasActiveFilter
+				? 'Pick a status, artist, album, or title filter first'
+				: statusFilter === 'skipped_existing'
+					? `Overwrite the existing lyrics on all ${total} track${total === 1 ? '' : 's'} shown with an LRCLIB match`
+					: `Recheck just the ${total} track${total === 1 ? '' : 's'} matching this filter`}
 		>
 			Rescan {hasActiveFilter ? `${total} filtered` : 'filtered'}
 		</button>

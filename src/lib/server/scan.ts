@@ -63,7 +63,13 @@ export async function runFullScan(
  * library. Every matching track is reprocessed unconditionally, ignoring the
  * retry/upgrade cooldowns, since narrowing to a filter is itself the signal
  * that these specific tracks need another look. Doesn't touch orphan cleanup
- * (that's a full-scan concern) or overwrite lyrics Stanza didn't write.
+ * (that's a full-scan concern).
+ *
+ * When the filter is specifically the "Existing lyrics" status, this is
+ * allowed to overwrite those pre-existing lyrics with an LRCLIB match —
+ * filtering to exactly that bucket and asking for a rescan only makes sense
+ * as "try to actually fix these." Any other filter (artist/album/other
+ * statuses) still leaves lyrics Stanza didn't write alone.
  */
 export async function runFilteredScan(
 	deps: PipelineDeps,
@@ -71,9 +77,10 @@ export async function runFilteredScan(
 ): Promise<ScanResult> {
 	const { db, logger } = deps;
 	const paths = db.listAllPaths(filter);
+	const allowOverwrite = filter.status === 'skipped_existing';
 
 	for (const filePath of paths) {
-		await processTrack(deps, filePath);
+		await processTrack(deps, filePath, { allowOverwrite });
 	}
 
 	logger.info(`Filtered rescan complete: ${paths.length} tracks reprocessed`);
