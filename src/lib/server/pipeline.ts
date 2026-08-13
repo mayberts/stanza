@@ -17,11 +17,18 @@ export interface PipelineDeps {
 
 /** Rounded to whole milliseconds: some filesystems (FUSE mounts like Unraid's
  * shfs, network shares) report mtime with sub-millisecond jitter between
- * separate stat() calls on a file that never actually changed — comparing the
- * raw float would make every track look "changed" on every single scan. */
+ * separate stat() calls on a file that never actually changed. */
 export async function getMtimeMs(filePath: string): Promise<number> {
 	return Math.round((await stat(filePath)).mtimeMs);
 }
+
+/** Treat mtimes within this many ms as "unchanged". Wider than the jitter
+ * itself (well under 1ms) so it also absorbs the one-time gap between a
+ * pre-existing fractional mtime_ms already in the database and a freshly
+ * rounded reading — otherwise every track in an existing library would look
+ * "changed" the first time this runs, forcing a full LRCLIB re-fetch of
+ * everything instead of a quiet, free stabilization. */
+const MTIME_TOLERANCE_MS = 5;
 
 /** Whether a track is worth re-checking, given its last-known DB state. */
 export function needsProcessing(
@@ -33,7 +40,7 @@ export function needsProcessing(
 ): boolean {
 	if (!existing) return true;
 	if (existing.manualOverride) return false;
-	if (existing.mtimeMs !== mtimeMs) return true;
+	if (Math.abs(existing.mtimeMs - mtimeMs) > MTIME_TOLERANCE_MS) return true;
 	if (existing.status === 'not_found' || existing.status === 'error') {
 		return force || existing.checkedAt < retryCutoffMs;
 	}
