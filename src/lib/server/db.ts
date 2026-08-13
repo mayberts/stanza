@@ -36,6 +36,37 @@ interface TrackTableRow {
 	checked_at: number;
 }
 
+export interface TrackFilter {
+	status?: string;
+	artist?: string;
+	album?: string;
+	title?: string;
+}
+
+function buildWhere(filter: TrackFilter): { where: string; params: Record<string, unknown> } {
+	const clauses: string[] = [];
+	const params: Record<string, unknown> = {};
+
+	if (filter.status) {
+		clauses.push('status = @status');
+		params.status = filter.status;
+	}
+	if (filter.artist) {
+		clauses.push('artist = @artist');
+		params.artist = filter.artist;
+	}
+	if (filter.album) {
+		clauses.push('album = @album');
+		params.album = filter.album;
+	}
+	if (filter.title) {
+		clauses.push('(title LIKE @title OR path LIKE @title)');
+		params.title = `%${filter.title}%`;
+	}
+
+	return { where: clauses.length ? `WHERE ${clauses.join(' AND ')}` : '', params };
+}
+
 function fromRow(row: TrackTableRow): TrackRow {
 	return {
 		path: row.path,
@@ -123,37 +154,11 @@ export class StanzaDb {
 		return rows.map((r) => r.path);
 	}
 
-	list(options: {
-		status?: string;
-		artist?: string;
-		album?: string;
-		title?: string;
-		limit: number;
-		offset: number;
-	}): {
+	list(options: TrackFilter & { limit: number; offset: number }): {
 		rows: TrackRow[];
 		total: number;
 	} {
-		const clauses: string[] = [];
-		const params: Record<string, unknown> = {};
-
-		if (options.status) {
-			clauses.push('status = @status');
-			params.status = options.status;
-		}
-		if (options.artist) {
-			clauses.push('artist = @artist');
-			params.artist = options.artist;
-		}
-		if (options.album) {
-			clauses.push('album = @album');
-			params.album = options.album;
-		}
-		if (options.title) {
-			clauses.push('(title LIKE @title OR path LIKE @title)');
-			params.title = `%${options.title}%`;
-		}
-		const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
+		const { where, params } = buildWhere(options);
 
 		const total = (
 			this.db.prepare(`SELECT COUNT(*) AS c FROM tracks ${where}`).get(params) as { c: number }
@@ -166,6 +171,15 @@ export class StanzaDb {
 			.all({ ...params, limit: options.limit, offset: options.offset }) as TrackTableRow[];
 
 		return { rows: rows.map(fromRow), total };
+	}
+
+	/** All paths matching a filter, unpaginated — for bulk actions like a scoped rescan. */
+	listAllPaths(filter: TrackFilter): string[] {
+		const { where, params } = buildWhere(filter);
+		const rows = this.db.prepare(`SELECT path FROM tracks ${where}`).all(params) as {
+			path: string;
+		}[];
+		return rows.map((r) => r.path);
 	}
 
 	distinctArtists(): string[] {

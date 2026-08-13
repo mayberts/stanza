@@ -1,5 +1,6 @@
+import type { TrackFilter } from './db.js';
 import type { PipelineDeps } from './pipeline.js';
-import { runFullScan, type ScanResult } from './scan.js';
+import { runFilteredScan, runFullScan, type ScanResult } from './scan.js';
 
 let scanning = false;
 let lastResult: ScanResult | null = null;
@@ -21,11 +22,14 @@ export function getLastScan(): {
 /** Fire-and-forget: starts a scan if one isn't already running. Safe to call often. */
 export function triggerScan(
 	deps: PipelineDeps,
-	options: { force?: boolean } = {}
+	options: { force?: boolean; filter?: TrackFilter } = {}
 ): { started: boolean } {
 	if (scanning) return { started: false };
 	scanning = true;
-	runFullScan(deps, options)
+	const work = options.filter
+		? runFilteredScan(deps, options.filter)
+		: runFullScan(deps, { force: options.force });
+	work
 		.then((result) => {
 			lastResult = result;
 			lastError = null;

@@ -1,4 +1,5 @@
 import { stat } from 'node:fs/promises';
+import type { TrackFilter } from './db.js';
 import { needsProcessing, processTrack, removeTrack, type PipelineDeps } from './pipeline.js';
 import { walkAudioFiles } from './scanner.js';
 
@@ -49,4 +50,27 @@ export async function runFullScan(
 
 	logger.info(`Scan complete: ${scanned} tracks seen, ${processed} processed, ${removed} removed`);
 	return { scanned, processed, removed };
+}
+
+/**
+ * Rechecks exactly the tracks matching a filter — e.g. everything currently
+ * shown in the dashboard's "Existing lyrics" view — instead of the whole
+ * library. Every matching track is reprocessed unconditionally, ignoring the
+ * retry/upgrade cooldowns, since narrowing to a filter is itself the signal
+ * that these specific tracks need another look. Doesn't touch orphan cleanup
+ * (that's a full-scan concern) or overwrite lyrics Stanza didn't write.
+ */
+export async function runFilteredScan(
+	deps: PipelineDeps,
+	filter: TrackFilter
+): Promise<ScanResult> {
+	const { db, logger } = deps;
+	const paths = db.listAllPaths(filter);
+
+	for (const filePath of paths) {
+		await processTrack(deps, filePath);
+	}
+
+	logger.info(`Filtered rescan complete: ${paths.length} tracks reprocessed`);
+	return { scanned: paths.length, processed: paths.length, removed: 0 };
 }

@@ -105,6 +105,26 @@
 		});
 	}
 
+	const hasActiveFilter = $derived(
+		statusFilter !== null || artistFilter !== null || albumFilter !== null || titleQuery !== ''
+	);
+
+	async function rescanFiltered() {
+		scanning = true;
+		await fetch('/api/scan', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({
+				filter: {
+					status: statusFilter ?? undefined,
+					artist: artistFilter ?? undefined,
+					album: albumFilter ?? undefined,
+					title: titleQuery || undefined
+				}
+			})
+		});
+	}
+
 	$effect(() => {
 		refreshTracks(statusFilter, artistFilter, albumFilter, titleQuery, offset);
 	});
@@ -196,6 +216,16 @@
 			bind:value={titleInput}
 			oninput={onTitleInput}
 		/>
+		<button
+			class="rescan-filtered"
+			onclick={rescanFiltered}
+			disabled={scanning || !hasActiveFilter}
+			title={hasActiveFilter
+				? `Recheck just the ${total} track${total === 1 ? '' : 's'} matching this filter`
+				: 'Pick a status, artist, album, or title filter first'}
+		>
+			Rescan {hasActiveFilter ? `${total} filtered` : 'filtered'}
+		</button>
 	</div>
 
 	<table>
@@ -366,6 +396,20 @@
 	.filter-select {
 		flex: 0 1 220px;
 		min-width: 0;
+	}
+	.rescan-filtered {
+		flex: 0 0 auto;
+		white-space: nowrap;
+		background: var(--surface);
+		border: 1px solid var(--border);
+		color: var(--text);
+		border-radius: 8px;
+		padding: 0.6rem 0.9rem;
+		font-size: 0.85rem;
+	}
+	.rescan-filtered:disabled {
+		opacity: 0.45;
+		cursor: not-allowed;
 	}
 	table {
 		width: 100%;
