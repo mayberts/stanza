@@ -196,6 +196,15 @@ export class StanzaDb {
 		return rows.map((r) => r.path);
 	}
 
+	/** Every manually-matched track, for backing up/restoring "Fix match" picks
+	 * independent of this DB's lifetime. */
+	listManualOverrides(): TrackRow[] {
+		const rows = this.db
+			.prepare('SELECT * FROM tracks WHERE manual_override = 1')
+			.all() as TrackTableRow[];
+		return rows.map(fromRow);
+	}
+
 	distinctArtists(): string[] {
 		const rows = this.db
 			.prepare(
