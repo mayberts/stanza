@@ -1,5 +1,6 @@
 <script lang="ts">
 	import MatchDrawer from '$lib/components/MatchDrawer.svelte';
+	import PublishDrawer from '$lib/components/PublishDrawer.svelte';
 	import {
 		ALL_STATUSES,
 		STATUS_LABELS,
@@ -30,6 +31,7 @@
 	let titleQuery = $state('');
 	let offset = $state(0);
 	let selectedTrack = $state<TrackRow | null>(null);
+	let contributingTrack = $state<TrackRow | null>(null);
 
 	let titleDebounce: ReturnType<typeof setTimeout>;
 	function onTitleInput() {
@@ -293,7 +295,19 @@
 </div>
 
 {#if selectedTrack}
-	<MatchDrawer track={selectedTrack} onClose={() => (selectedTrack = null)} {onApplied} />
+	<MatchDrawer
+		track={selectedTrack}
+		onClose={() => (selectedTrack = null)}
+		{onApplied}
+		onContribute={() => {
+			contributingTrack = selectedTrack;
+			selectedTrack = null;
+		}}
+	/>
+{/if}
+
+{#if contributingTrack}
+	<PublishDrawer track={contributingTrack} onClose={() => (contributingTrack = null)} {onApplied} />
 {/if}
 
 <style>

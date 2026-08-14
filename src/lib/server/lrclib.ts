@@ -1,3 +1,4 @@
+import { solveChallenge } from './lrclib-challenge.js';
 import type { TrackTags } from './tags.js';
 
 export interface LyricsResult {
@@ -21,6 +22,15 @@ export interface LrclibQuery {
 	trackName: string;
 	artistName: string;
 	albumName?: string;
+}
+
+export interface PublishEntry {
+	trackName: string;
+	artistName: string;
+	albumName: string;
+	duration: number;
+	plainLyrics: string;
+	syncedLyrics?: string | null;
 }
 
 /** LRCLIB's own tolerance on /get is tight; widen it further for our /search
@@ -107,6 +117,45 @@ export class LrclibClient {
 		const exact = await this.get(tags);
 		if (exact) return toResult(exact);
 		return this.autoPickFromSearch(tags);
+	}
+
+	/** Contributes lyrics back to LRCLIB's shared database. Solves their
+	 * proof-of-work challenge first, as their /api/publish requires. */
+	async publish(entry: PublishEntry): Promise<void> {
+		const challengeRes = await fetch(`${this.baseUrl}/request-challenge`, {
+			method: 'POST',
+			headers: { 'User-Agent': this.userAgent }
+		});
+		if (!challengeRes.ok) {
+			throw new Error(
+				`LRCLIB /request-challenge failed: ${challengeRes.status} ${challengeRes.statusText}`
+			);
+		}
+		const challenge = (await challengeRes.json()) as { prefix: string; target: string };
+		const nonce = solveChallenge(challenge);
+
+		const publishRes = await fetch(`${this.baseUrl}/publish`, {
+			method: 'POST',
+			headers: {
+				'User-Agent': this.userAgent,
+				'Content-Type': 'application/json',
+				'X-Publish-Token': `${challenge.prefix}:${nonce}`
+			},
+			body: JSON.stringify({
+				trackName: entry.trackName,
+				artistName: entry.artistName,
+				albumName: entry.albumName,
+				duration: entry.duration,
+				plainLyrics: entry.plainLyrics,
+				syncedLyrics: entry.syncedLyrics ?? ''
+			})
+		});
+		if (!publishRes.ok) {
+			const body = await publishRes.text().catch(() => '');
+			throw new Error(
+				`LRCLIB /publish failed: ${publishRes.status} ${publishRes.statusText}${body ? ` — ${body}` : ''}`
+			);
+		}
 	}
 
 	/**

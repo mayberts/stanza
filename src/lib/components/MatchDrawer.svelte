@@ -4,11 +4,13 @@
 	let {
 		track,
 		onClose,
-		onApplied
+		onApplied,
+		onContribute
 	}: {
 		track: TrackRow;
 		onClose: () => void;
 		onApplied: () => void;
+		onContribute: () => void;
 	} = $props();
 
 	let searchArtist = $state(track.artist ?? '');
@@ -150,6 +152,11 @@
 			{/each}
 		{/if}
 	</div>
+
+	<div class="contribute">
+		<p class="muted">Not seeing it, or LRCLIB doesn't have it yet?</p>
+		<button class="link-btn" onclick={onContribute}>Contribute lyrics to LRCLIB →</button>
+	</div>
 </aside>
 
 <style>
@@ -274,5 +281,25 @@
 		margin: 0 1.25rem;
 		color: var(--status-error);
 		font-size: 0.85rem;
+	}
+	.contribute {
+		margin-top: auto;
+		padding: 1rem 1.25rem;
+		border-top: 1px solid var(--border);
+		display: flex;
+		flex-direction: column;
+		gap: 0.4rem;
+	}
+	.contribute .muted {
+		font-size: 0.8rem;
+	}
+	.contribute .link-btn {
+		align-self: flex-start;
+		background: none;
+		border: 1px solid var(--border);
+		color: var(--text);
+		border-radius: 6px;
+		padding: 0.4rem 0.7rem;
+		font-size: 0.8rem;
 	}
 </style>

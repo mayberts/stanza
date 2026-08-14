@@ -179,6 +179,36 @@ export async function processTrack(
 	logger.info(`Wrote ${status} lyrics: ${tags.artist} - ${tags.title}`);
 }
 
+/** Writes a human-picked (or human-authored) lyrics match locally — used by
+ * both "Fix match" (picking an LRCLIB candidate) and "Contribute lyrics"
+ * (typing your own). Always marks manualOverride so no future automatic
+ * pass ever silently replaces it. */
+export async function applyManualLyrics(
+	deps: PipelineDeps,
+	filePath: string,
+	content: { syncedLyrics?: string | null; plainLyrics?: string | null }
+): Promise<void> {
+	const text = content.syncedLyrics || content.plainLyrics;
+	if (!text) throw new Error('No lyrics content to write');
+
+	await writeLrc(filePath, text);
+
+	const [tags, mtimeMs] = await Promise.all([readTrackTags(filePath), getMtimeMs(filePath)]);
+
+	deps.db.upsert({
+		path: filePath,
+		mtimeMs,
+		artist: tags?.artist ?? null,
+		title: tags?.title ?? null,
+		album: tags?.album ?? null,
+		durationSec: tags?.durationSec ?? null,
+		status: content.syncedLyrics ? 'synced' : 'plain',
+		wroteLrc: true,
+		manualOverride: true,
+		checkedAt: Date.now()
+	});
+}
+
 export async function removeTrack(deps: PipelineDeps, filePath: string): Promise<void> {
 	const existing = deps.db.get(filePath);
 	if (existing?.wroteLrc) {
