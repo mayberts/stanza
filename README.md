@@ -52,6 +52,14 @@ The web app (running by default, see below) serves a dashboard at `/`:
 - **Fix match** on any track opens a panel to search LRCLIB yourself (with
   the artist/title/album prefilled, editable) and pick the right result —
   for tracks Stanza got wrong or couldn't find automatically.
+- **Review queue** turns "Fix match" into a bulk workflow: filter to whatever
+  needs attention (e.g. the "Not found" status) and click **Review queue** to
+  step through every matching track — up to 200 at a time — one after
+  another, in the same panel, without reopening it per row. Applying a match
+  or skipping a track (the → button, or clicking outside the panel) both
+  advance to the next one; **Exit queue** stops at any point. Tracks already
+  protected by a manual override are skipped automatically since they don't
+  need another look.
 - **Export overrides** / **Import overrides** back up and restore every
   manually-matched track (picked via "Fix match" or "Contribute lyrics") as a
   single JSON file, including each one's `.lrc` content — not just a pointer

@@ -4,11 +4,13 @@
 	let {
 		track,
 		onClose,
-		onApplied
+		onApplied,
+		queueInfo = null
 	}: {
 		track: TrackRow;
 		onClose: () => void;
 		onApplied: () => void;
+		queueInfo?: { index: number; length: number; total: number; onExit: () => void } | null;
 	} = $props();
 
 	let artist = $state(track.artist ?? '');
@@ -55,8 +57,22 @@
 		<div>
 			<h2>Contribute lyrics to LRCLIB</h2>
 			<p class="path">{trackFileName(track.path)}</p>
+			{#if queueInfo}
+				<p class="queue-progress">
+					Reviewing {queueInfo.index + 1} of {queueInfo.length}
+					{#if queueInfo.total > queueInfo.length}· {queueInfo.total} total{/if}
+					— <button class="link-btn" onclick={queueInfo.onExit}>Exit queue</button>
+				</p>
+			{/if}
 		</div>
-		<button class="icon-btn" onclick={onClose} aria-label="Close">✕</button>
+		<button
+			class="icon-btn"
+			onclick={onClose}
+			aria-label={queueInfo ? 'Skip to next' : 'Close'}
+			title={queueInfo ? 'Skip this track and move to the next' : undefined}
+		>
+			{queueInfo ? '→' : '✕'}
+		</button>
 	</header>
 
 	{#if result}
@@ -69,7 +85,7 @@
 					<span class="error-text">{result.publishError}</span>
 				</p>
 			{/if}
-			<button onclick={onClose}>Done</button>
+			<button onclick={onClose}>{queueInfo ? 'Next track →' : 'Done'}</button>
 		</div>
 	{:else}
 		<form
@@ -152,6 +168,19 @@
 		color: var(--muted);
 		font-size: 0.8rem;
 		word-break: break-all;
+	}
+	.queue-progress {
+		margin: 0.4rem 0 0;
+		color: var(--muted);
+		font-size: 0.78rem;
+	}
+	.queue-progress .link-btn {
+		background: none;
+		border: none;
+		color: var(--text);
+		text-decoration: underline;
+		padding: 0;
+		font-size: inherit;
 	}
 	.icon-btn {
 		background: none;
