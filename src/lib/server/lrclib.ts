@@ -41,6 +41,40 @@ function primaryArtist(artistName: string): string | null {
 	return stripped && stripped.toLowerCase() !== artistName.toLowerCase() ? stripped : null;
 }
 
+/** Edition/remaster tags that describe packaging, not the recording itself —
+ * safe to strip because LRCLIB's canonical entry is almost never titled with
+ * them. Deliberately excludes anything that could be a genuinely different
+ * performance with different lyrics/timing (remix, live, acoustic, cover,
+ * demo) — stripping those risks matching to the wrong recording entirely. */
+const TITLE_NOISE_PHRASES = [
+	'(?:\\d{4}\\s+)?digitally\\s+remaster(?:ed)?(?:\\s+\\d{4})?',
+	'remaster(?:ed)?(?:\\s+\\d{4})?',
+	'\\d{4}\\s+remaster(?:ed)?',
+	'album\\s+version',
+	'single\\s+version',
+	'radio\\s+edit',
+	'clean(?:\\s+version)?',
+	'explicit(?:\\s+version)?',
+	'mono(?:\\s+version)?',
+	'stereo(?:\\s+version)?',
+	'deluxe(?:\\s+edition)?',
+	'expanded\\s+edition',
+	'anniversary\\s+edition',
+	'bonus\\s+track'
+].join('|');
+
+// Only strips a trailing " (Tag)"/" [Tag]"/" - Tag" — never touches text in
+// the middle of a title, where it's far more likely to be load-bearing.
+const TITLE_NOISE_PATTERN = new RegExp(
+	`\\s*(?:[([](?:${TITLE_NOISE_PHRASES})[)\\]]|-\\s*(?:${TITLE_NOISE_PHRASES}))\\s*$`,
+	'i'
+);
+
+function cleanedTitle(trackName: string): string | null {
+	const stripped = trackName.replace(TITLE_NOISE_PATTERN, '').trim();
+	return stripped && stripped.toLowerCase() !== trackName.toLowerCase() ? stripped : null;
+}
+
 function structuredParams(query: LrclibQuery): URLSearchParams {
 	const params = new URLSearchParams({
 		track_name: query.trackName,
@@ -79,27 +113,27 @@ export class LrclibClient {
 	 * Raw search results, for manual review — no duration filtering or ranking
 	 * applied. Tries progressively looser queries until one finds something:
 	 * structured params (precise when tags are clean), then a free-text query
-	 * (matches lrclib.net's own search box), then both again with any "feat."
-	 * billing stripped down to the primary artist.
+	 * (matches lrclib.net's own search box) — for the artist/title as tagged,
+	 * then again with any "feat." billing stripped to the primary artist
+	 * and/or any remaster/edition noise stripped from the title, since either
+	 * one alone can be why an otherwise-present track fails to match.
 	 */
 	async searchCandidates(query: LrclibQuery): Promise<LrclibRecord[]> {
-		const attempts: (() => Promise<LrclibRecord[]>)[] = [
-			() => this.rawSearch(structuredParams(query)),
-			() => this.rawSearch(freeTextParams(query))
-		];
+		const artistVariants = [query.artistName, primaryArtist(query.artistName)].filter(
+			(a): a is string => !!a
+		);
+		const titleVariants = [query.trackName, cleanedTitle(query.trackName)].filter(
+			(t): t is string => !!t
+		);
 
-		const primary = primaryArtist(query.artistName);
-		if (primary) {
-			const primaryQuery = { ...query, artistName: primary };
-			attempts.push(
-				() => this.rawSearch(structuredParams(primaryQuery)),
-				() => this.rawSearch(freeTextParams(primaryQuery))
-			);
-		}
-
-		for (const attempt of attempts) {
-			const results = await attempt();
-			if (results.length > 0) return results;
+		for (const artistName of artistVariants) {
+			for (const trackName of titleVariants) {
+				const variant = { ...query, artistName, trackName };
+				const structured = await this.rawSearch(structuredParams(variant));
+				if (structured.length > 0) return structured;
+				const freeText = await this.rawSearch(freeTextParams(variant));
+				if (freeText.length > 0) return freeText;
+			}
 		}
 		return [];
 	}
