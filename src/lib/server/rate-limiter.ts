@@ -7,7 +7,11 @@ export class RateLimiter {
 	private nextAvailableAt = 0;
 	private queue: Promise<void> = Promise.resolve();
 
-	constructor(private readonly minIntervalMs: number) {}
+	constructor(private minIntervalMs: number) {}
+
+	setMinIntervalMs(ms: number): void {
+		this.minIntervalMs = ms;
+	}
 
 	async wait(): Promise<void> {
 		const turn = this.queue;
