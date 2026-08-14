@@ -8,13 +8,12 @@ services:
     ports:
       - '4123:3000'
     environment:
+      # Fixed at container start, so these two stay env-only — everything else
+      # (rescan interval, retry/upgrade cooldowns, overwrite-existing, log
+      # level, polling, ...) is tunable at runtime from the dashboard's
+      # Settings page instead, and persists in /config across recreation.
       - MUSIC_DIR=/music
       - DB_PATH=/config/stanza.db
-      - SCAN_INTERVAL_MINUTES=${SCAN_INTERVAL_MINUTES:-60}
-      - RETRY_NOT_FOUND_AFTER_HOURS=${RETRY_NOT_FOUND_AFTER_HOURS:-24}
-      - USE_POLLING=${USE_POLLING:-false}
-      - OVERWRITE_EXISTING=${OVERWRITE_EXISTING:-false}
-      - LOG_LEVEL=${LOG_LEVEL:-info}
     volumes:
       # Point this at your actual music library. Needs write access so .lrc
       # files can be written alongside the tracks.
