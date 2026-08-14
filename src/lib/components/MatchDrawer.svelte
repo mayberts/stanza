@@ -5,12 +5,14 @@
 		track,
 		onClose,
 		onApplied,
-		onContribute
+		onContribute,
+		queueInfo = null
 	}: {
 		track: TrackRow;
 		onClose: () => void;
 		onApplied: () => void;
 		onContribute: () => void;
+		queueInfo?: { index: number; length: number; total: number; onExit: () => void } | null;
 	} = $props();
 
 	let searchArtist = $state(track.artist ?? '');
@@ -86,8 +88,22 @@
 		<div>
 			<h2>Fix lyrics match</h2>
 			<p class="path">{trackFileName(track.path)}</p>
+			{#if queueInfo}
+				<p class="queue-progress">
+					Reviewing {queueInfo.index + 1} of {queueInfo.length}
+					{#if queueInfo.total > queueInfo.length}· {queueInfo.total} total{/if}
+					— <button class="link-btn" onclick={queueInfo.onExit}>Exit queue</button>
+				</p>
+			{/if}
 		</div>
-		<button class="icon-btn" onclick={onClose} aria-label="Close">✕</button>
+		<button
+			class="icon-btn"
+			onclick={onClose}
+			aria-label={queueInfo ? 'Skip to next' : 'Close'}
+			title={queueInfo ? 'Skip this track and move to the next' : undefined}
+		>
+			{queueInfo ? '→' : '✕'}
+		</button>
 	</header>
 
 	<form
@@ -195,6 +211,19 @@
 		color: var(--muted);
 		font-size: 0.8rem;
 		word-break: break-all;
+	}
+	.queue-progress {
+		margin: 0.4rem 0 0;
+		color: var(--muted);
+		font-size: 0.78rem;
+	}
+	.queue-progress .link-btn {
+		background: none;
+		border: none;
+		color: var(--text);
+		text-decoration: underline;
+		padding: 0;
+		font-size: inherit;
 	}
 	.icon-btn {
 		background: none;

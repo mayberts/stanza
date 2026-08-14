@@ -15,6 +15,7 @@
 	let { data }: PageProps = $props();
 
 	const LIMIT = 50;
+	const QUEUE_LIMIT = 200;
 
 	let tracks = $state<TrackRow[]>(data.tracks);
 	let total = $state(data.total);
@@ -32,6 +33,9 @@
 	let offset = $state(0);
 	let selectedTrack = $state<TrackRow | null>(null);
 	let contributingTrack = $state<TrackRow | null>(null);
+	let queue = $state<TrackRow[] | null>(null);
+	let queueIndex = $state(0);
+	let queueTotal = $state(0);
 	let importInput = $state<HTMLInputElement>();
 	let importResult = $state<{
 		imported: number;
@@ -167,6 +171,49 @@
 			})
 		});
 	}
+
+	async function startQueue() {
+		const params = new SvelteURLSearchParams();
+		if (statusFilter) params.set('status', statusFilter);
+		if (artistFilter) params.set('artist', artistFilter);
+		if (albumFilter) params.set('album', albumFilter);
+		if (titleQuery) params.set('title', titleQuery);
+		params.set('limit', String(QUEUE_LIMIT));
+		params.set('offset', '0');
+		const res = await fetch(`/api/tracks?${params}`);
+		const data = await res.json();
+		// Already-protected tracks don't need a human to look at them again.
+		const rows: TrackRow[] = data.rows.filter((row: TrackRow) => !row.manualOverride);
+		if (rows.length === 0) return;
+		queue = rows;
+		queueTotal = data.total;
+		queueIndex = 0;
+		selectedTrack = queue[0];
+		contributingTrack = null;
+	}
+
+	function queueAdvance() {
+		if (!queue) return;
+		if (queueIndex + 1 < queue.length) {
+			queueIndex++;
+			contributingTrack = null;
+			selectedTrack = queue[queueIndex];
+		} else {
+			exitQueue();
+		}
+	}
+
+	function exitQueue() {
+		queue = null;
+		queueIndex = 0;
+		queueTotal = 0;
+		selectedTrack = null;
+		contributingTrack = null;
+	}
+
+	const queueInfo = $derived(
+		queue ? { index: queueIndex, length: queue.length, total: queueTotal, onExit: exitQueue } : null
+	);
 
 	$effect(() => {
 		refreshTracks(statusFilter, artistFilter, albumFilter, titleQuery, offset);
@@ -314,6 +361,16 @@
 		>
 			Rescan {hasActiveFilter ? `${total} filtered` : 'filtered'}
 		</button>
+		<button
+			class="rescan-filtered"
+			onclick={startQueue}
+			disabled={!hasActiveFilter || total === 0}
+			title={!hasActiveFilter
+				? 'Pick a status, artist, album, or title filter first'
+				: `Step through the ${Math.min(total, QUEUE_LIMIT)} filtered track${total === 1 ? '' : 's'} one at a time, fixing each as you go`}
+		>
+			Review queue
+		</button>
 	</div>
 
 	<table>
@@ -373,19 +430,29 @@
 </div>
 
 {#if selectedTrack}
-	<MatchDrawer
-		track={selectedTrack}
-		onClose={() => (selectedTrack = null)}
-		{onApplied}
-		onContribute={() => {
-			contributingTrack = selectedTrack;
-			selectedTrack = null;
-		}}
-	/>
+	{#key selectedTrack.path}
+		<MatchDrawer
+			track={selectedTrack}
+			onClose={() => (queue ? queueAdvance() : (selectedTrack = null))}
+			{onApplied}
+			{queueInfo}
+			onContribute={() => {
+				contributingTrack = selectedTrack;
+				selectedTrack = null;
+			}}
+		/>
+	{/key}
 {/if}
 
 {#if contributingTrack}
-	<PublishDrawer track={contributingTrack} onClose={() => (contributingTrack = null)} {onApplied} />
+	{#key contributingTrack.path}
+		<PublishDrawer
+			track={contributingTrack}
+			onClose={() => (queue ? queueAdvance() : (contributingTrack = null))}
+			{onApplied}
+			{queueInfo}
+		/>
+	{/key}
 {/if}
 
 <style>
