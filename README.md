@@ -52,6 +52,18 @@ The web app (running by default, see below) serves a dashboard at `/`:
 - **Fix match** on any track opens a panel to search LRCLIB yourself (with
   the artist/title/album prefilled, editable) and pick the right result —
   for tracks Stanza got wrong or couldn't find automatically.
+- **Export overrides** / **Import overrides** back up and restore every
+  manually-matched track (picked via "Fix match" or "Contribute lyrics") as a
+  single JSON file, including each one's `.lrc` content — not just a pointer
+  to it. The manual/protected flag itself only lives in the state DB, so a
+  lost or rebuilt DB (a fresh `/config` volume, a `stanza.db` deleted to force
+  a clean rescan, moving to a new host) would otherwise silently drop that
+  protection, leaving your hand-picked matches exposed to being overwritten
+  by a later automatic rescan. Importing restores the protected flag for any
+  track whose `.lrc` still matches the backup exactly, rewrites the `.lrc`
+  file if it went missing too, and leaves any track alone whose `.lrc` has
+  since diverged locally (never silently overwrites a real match already
+  present).
 
 ## Usage
 
