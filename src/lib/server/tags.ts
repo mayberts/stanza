@@ -16,7 +16,7 @@ export interface TrackTags {
  * rips/downloads that otherwise encode this in the filename. Returns null if
  * there's no recognizable "Artist - Title" split, rather than guessing.
  */
-function parseFilenameFallback(filePath: string): { artist: string; title: string } | null {
+export function parseFilenameFallback(filePath: string): { artist: string; title: string } | null {
 	const name = basename(filePath, extname(filePath));
 	const withoutTrackNumber = name.replace(/^\d+(-\d+)?[.\s-]+/, '').trim();
 

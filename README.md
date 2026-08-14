@@ -105,6 +105,22 @@ by hitting the dashboard's "Rescan now" button, or `curl -X POST
 http://<host>:<port>/api/scan` from a script/cron if you want one without
 opening the UI.
 
+## Development
+
+```sh
+npm run check   # type-check
+npm run lint    # prettier --check + eslint
+npm run test    # vitest, once
+npm run test:watch
+```
+
+Tests cover the server-side logic that's easy to regress silently: the
+LRCLIB matching/ranking and feat.-/remaster-stripping in `lrclib.ts`, the
+rescan-cooldown decisions in `pipeline.ts`, filename-fallback tag parsing,
+the override export/import round-trip, and the DB layer. CI (see
+`.github/workflows/ci.yml`) runs all of the above plus a production build on
+every push and pull request.
+
 ## Configuration
 
 All configuration is via environment variables — see `.env.example` for the
