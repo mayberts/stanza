@@ -110,6 +110,10 @@ export class StanzaDb {
 				checked_at INTEGER NOT NULL
 			);
 			CREATE INDEX IF NOT EXISTS tracks_status_idx ON tracks (status);
+			CREATE TABLE IF NOT EXISTS settings (
+				key TEXT PRIMARY KEY,
+				value TEXT NOT NULL
+			);
 		`);
 
 		// CREATE TABLE IF NOT EXISTS doesn't add columns to an already-existing
@@ -242,6 +246,32 @@ export class StanzaDb {
 		}[];
 		for (const row of rows) counts[row.status] = row.c;
 		return counts;
+	}
+
+	/** Runtime-tunable settings persisted from the dashboard's Settings page —
+	 * these override the env-var default for a Config field once set, and
+	 * survive DB persistence independent of process restarts. */
+	getSetting(key: string): string | undefined {
+		const row = this.db.prepare('SELECT value FROM settings WHERE key = ?').get(key) as
+			{ value: string } | undefined;
+		return row?.value;
+	}
+
+	setSetting(key: string, value: string): void {
+		this.db
+			.prepare(
+				`INSERT INTO settings (key, value) VALUES (@key, @value)
+				 ON CONFLICT(key) DO UPDATE SET value = excluded.value`
+			)
+			.run({ key, value });
+	}
+
+	getAllSettings(): Record<string, string> {
+		const rows = this.db.prepare('SELECT key, value FROM settings').all() as {
+			key: string;
+			value: string;
+		}[];
+		return Object.fromEntries(rows.map((r) => [r.key, r.value]));
 	}
 
 	close(): void {

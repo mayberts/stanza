@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import MatchDrawer from '$lib/components/MatchDrawer.svelte';
 	import PublishDrawer from '$lib/components/PublishDrawer.svelte';
 	import {
@@ -36,11 +37,6 @@
 	let queue = $state<TrackRow[] | null>(null);
 	let queueIndex = $state(0);
 	let queueTotal = $state(0);
-	let importInput = $state<HTMLInputElement>();
-	let importResult = $state<{
-		imported: number;
-		skipped: { path: string; reason: string }[];
-	} | null>(null);
 
 	let titleDebounce: ReturnType<typeof setTimeout>;
 	function onTitleInput() {
@@ -114,36 +110,6 @@
 			headers: { 'content-type': 'application/json' },
 			body: JSON.stringify({ force: true })
 		});
-	}
-
-	async function exportOverrides() {
-		const res = await fetch('/api/overrides');
-		const blob = await res.blob();
-		const url = URL.createObjectURL(blob);
-		const a = document.createElement('a');
-		a.href = url;
-		a.download = `stanza-overrides-${new Date().toISOString().slice(0, 10)}.json`;
-		a.click();
-		URL.revokeObjectURL(url);
-	}
-
-	async function importOverridesFile(e: Event) {
-		const input = e.currentTarget as HTMLInputElement;
-		const file = input.files?.[0];
-		if (!file) return;
-		const text = await file.text();
-		input.value = '';
-		const res = await fetch('/api/overrides', {
-			method: 'POST',
-			headers: { 'content-type': 'application/json' },
-			body: text
-		});
-		if (!res.ok) {
-			importResult = { imported: 0, skipped: [{ path: '', reason: (await res.json()).error }] };
-			return;
-		}
-		importResult = await res.json();
-		onApplied();
 	}
 
 	const hasActiveFilter = $derived(
@@ -260,52 +226,10 @@
 					<span class="dot"></span> Scanning…
 				</span>
 			{/if}
-			<button
-				class="secondary-btn"
-				onclick={exportOverrides}
-				title="Download every manually-matched track's .lrc content as a backup"
-			>
-				Export overrides
-			</button>
-			<button
-				class="secondary-btn"
-				onclick={() => importInput?.click()}
-				title="Restore manual matches from a previous export"
-			>
-				Import overrides
-			</button>
-			<input
-				bind:this={importInput}
-				type="file"
-				accept="application/json"
-				class="hidden-file-input"
-				onchange={importOverridesFile}
-			/>
+			<a class="secondary-btn" href={resolve('/settings')}>Settings</a>
 			<button onclick={rescan} disabled={scanning}>Rescan now</button>
 		</div>
 	</header>
-
-	{#if importResult}
-		<div class="import-result">
-			<span>
-				Imported {importResult.imported} override{importResult.imported === 1 ? '' : 's'}.
-				{#if importResult.skipped.length}
-					{importResult.skipped.length} skipped.
-				{/if}
-			</span>
-			{#if importResult.skipped.length}
-				<details>
-					<summary>Details</summary>
-					<ul>
-						{#each importResult.skipped as item (item.path + item.reason)}
-							<li><code>{item.path}</code> — {item.reason}</li>
-						{/each}
-					</ul>
-				</details>
-			{/if}
-			<button class="link-btn" onclick={() => (importResult = null)}>Dismiss</button>
-		</div>
-	{/if}
 
 	<div class="stats">
 		<button class="pill" class:active={statusFilter === null} onclick={() => selectStatus(null)}>
@@ -502,32 +426,15 @@
 		opacity: 0.6;
 	}
 	.header-actions .secondary-btn {
+		display: inline-flex;
+		align-items: center;
 		background: var(--surface);
 		color: var(--text);
 		border: 1px solid var(--border);
+		border-radius: 6px;
+		padding: 0.5rem 0.9rem;
 		font-weight: 400;
-	}
-	.hidden-file-input {
-		display: none;
-	}
-	.import-result {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: baseline;
-		gap: 0.75rem;
-		background: var(--surface);
-		border: 1px solid var(--border);
-		border-radius: 8px;
-		padding: 0.6rem 0.9rem;
-		margin-bottom: 1.25rem;
-		font-size: 0.85rem;
-	}
-	.import-result details {
-		flex-basis: 100%;
-	}
-	.import-result li {
-		font-size: 0.78rem;
-		color: var(--muted);
+		text-decoration: none;
 	}
 	.scanning {
 		display: inline-flex;

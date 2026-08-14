@@ -60,18 +60,35 @@ The web app (running by default, see below) serves a dashboard at `/`:
   advance to the next one; **Exit queue** stops at any point. Tracks already
   protected by a manual override are skipped automatically since they don't
   need another look.
-- **Export overrides** / **Import overrides** back up and restore every
-  manually-matched track (picked via "Fix match" or "Contribute lyrics") as a
-  single JSON file, including each one's `.lrc` content — not just a pointer
-  to it. The manual/protected flag itself only lives in the state DB, so a
-  lost or rebuilt DB (a fresh `/config` volume, a `stanza.db` deleted to force
-  a clean rescan, moving to a new host) would otherwise silently drop that
-  protection, leaving your hand-picked matches exposed to being overwritten
-  by a later automatic rescan. Importing restores the protected flag for any
-  track whose `.lrc` still matches the backup exactly, rewrites the `.lrc`
-  file if it went missing too, and leaves any track alone whose `.lrc` has
-  since diverged locally (never silently overwrites a real match already
-  present).
+- **Settings** (top right) opens the settings page — see below.
+
+## Settings
+
+The dashboard's **Settings** page (`/settings`) has two parts:
+
+- **Behavior** — the tunable knobs that make sense to change without a
+  restart: the full-rescan interval, the not-found retry and plain→synced
+  upgrade cooldowns, the LRCLIB request rate limit, whether to overwrite
+  existing `.lrc` files, log level, and polling mode/interval. Each saves
+  independently and takes effect immediately; a couple (rescan interval,
+  polling mode/interval) briefly restart the filesystem watcher to pick up
+  the change, called out inline. Changes are stored in the state DB, so they
+  persist across restarts and override whatever the corresponding env var
+  says from then on. `MUSIC_DIR`, `DB_PATH`, and `LRCLIB_BASE_URL` aren't
+  here — those can't be changed without restarting the whole process, so
+  they stay environment-variable-only (see Configuration below).
+- **Backup** — **Export overrides** / **Import overrides**, which back up
+  and restore every manually-matched track (picked via "Fix match" or
+  "Contribute lyrics") as a single JSON file, including each one's `.lrc`
+  content — not just a pointer to it. The manual/protected flag itself only
+  lives in the state DB, so a lost or rebuilt DB (a fresh `/config` volume, a
+  `stanza.db` deleted to force a clean rescan, moving to a new host) would
+  otherwise silently drop that protection, leaving your hand-picked matches
+  exposed to being overwritten by a later automatic rescan. Importing
+  restores the protected flag for any track whose `.lrc` still matches the
+  backup exactly, rewrites the `.lrc` file if it went missing too, and
+  leaves any track alone whose `.lrc` has since diverged locally (never
+  silently overwrites a real match already present).
 
 ## Usage
 
@@ -123,8 +140,12 @@ every push and pull request.
 
 ## Configuration
 
-All configuration is via environment variables — see `.env.example` for the
-full list and defaults. The only required one is `MUSIC_DIR`.
+All configuration starts as environment variables — see `.env.example` for
+the full list and defaults. The only required one is `MUSIC_DIR`. Most of the
+tunable ones (everything except `MUSIC_DIR`, `DB_PATH`, `PORT`, and
+`LRCLIB_BASE_URL`) can also be changed at runtime from the dashboard's
+[Settings page](#settings) — once saved there, the saved value takes over
+from the env var until changed again, even across restarts.
 
 Watch mode reacts to filesystem events (new/changed/removed tracks)
 immediately, plus a periodic full rescan (`SCAN_INTERVAL_MINUTES`) as a

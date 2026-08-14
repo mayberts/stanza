@@ -6,7 +6,11 @@ function levelIndex(level: LogLevel): number {
 }
 
 export class Logger {
-	constructor(private readonly minLevel: LogLevel) {}
+	constructor(private minLevel: LogLevel) {}
+
+	setLevel(level: LogLevel): void {
+		this.minLevel = level;
+	}
 
 	private log(level: LogLevel, message: string): void {
 		if (levelIndex(level) > levelIndex(this.minLevel)) return;
